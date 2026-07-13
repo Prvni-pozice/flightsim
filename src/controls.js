@@ -79,20 +79,34 @@ export class FlightControls {
     // náklon mobilu
     if (this.tiltActive && this.tilt.beta != null) {
       let b = this.tilt.beta, g = this.tilt.gamma
-      // orientace displeje: na šířku jsou osy prohozené
-      const ang = (screen.orientation && screen.orientation.angle) || 0
+      // orientace displeje: na šířku jsou osy prohozené. screen.orientation
+      // nemusí být na iOS Safari spolehlivě dostupné (starší API
+      // window.orientation je jistější) — bez fallbacku zůstane ang vždy 0
+      // (portrait mapování), i když je telefon fyzicky na šířku → ovládání
+      // vypadá zkřížené/obrácené. Zkusit obě API, jinak 0.
+      const ang = (screen.orientation && typeof screen.orientation.angle === 'number')
+        ? screen.orientation.angle
+        : (typeof window.orientation === 'number' ? window.orientation : 0)
       if (ang === 90) { const t = b; b = -g; g = t }
       else if (ang === 270 || ang === -90) { const t = b; b = g; g = -t }
+      else if (ang === 180 || ang === -180) { b = -b; g = -g }
       const nb = this.neutralBeta == null ? 40 : this.neutralBeta
       // náklon dopředu (beta < neutral) = stoupat, k sobě = klesat
-      // (citlivost napůl — plný výchylka teď při ~2× větším náklonu)
       pitch -= Math.max(-1, Math.min(1, (b - nb) / 44))
       roll += Math.max(-1, Math.min(1, g / 50))
     }
 
+    pitch = Math.max(-1, Math.min(1, pitch))
+    roll = Math.max(-1, Math.min(1, roll))
+    // měkčí střed: u malých výchylek (klidný přímý let) reaguje málo,
+    // u velkých (ostrá zatáčka/stoupání) plnou silou — bez skoku na hranici
+    // (na rozdíl od tvrdého "dead zone" prahu). Klávesnice dává jen -1/0/1,
+    // které křivka nechá beze změny (0^k=0, 1^k=1).
+    const shape = v => Math.sign(v) * Math.abs(v) ** 1.8
+
     return {
-      pitch: Math.max(-1, Math.min(1, pitch)),
-      roll: Math.max(-1, Math.min(1, roll)),
+      pitch: shape(pitch),
+      roll: shape(roll),
       thrUp: this.thrUpHeld || !!this.keys.KeyW,
       thrDn: this.thrDnHeld || !!this.keys.KeyS,
       reset: !!this.keys.KeyR,
