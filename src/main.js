@@ -80,8 +80,11 @@ startBtn.disabled = false
 startBtn.addEventListener('click', async () => {
   try {
     audio.init()
-    await controls.enableTilt()
-    setTimeout(() => controls.calibrate(), 600) // sejmout neutrální držení telefonu
+    const tilt = await controls.enableTilt()
+    if (tilt === 'ok') setTimeout(() => controls.calibrate(), 600) // sejmout neutrální držení
+    else if (tilt === 'insecure') showErr('Náklon telefonu vyžaduje HTTPS — otevři stránku přes https://')
+    else if (tilt === 'denied') showErr('Povolení pohybu zamítnuto — povol v Nastavení > Safari > Pohyb a orientace')
+    // 'unsupported' (desktop) = ticho, jede klávesnice
   } catch (e) { showErr(e.message) }
   overlay.style.display = 'none'
   running = true

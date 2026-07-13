@@ -24,16 +24,27 @@ export class FlightControls {
     }
   }
 
-  /** Volat z user gesta (Start) — iOS vyžaduje requestPermission. */
+  /**
+   * Volat z user gesta (Start) — iOS vyžaduje requestPermission.
+   * Vrací: 'ok' | 'denied' | 'insecure' | 'unsupported'
+   * POZOR: iOS Safari dává DeviceOrientation JEN na HTTPS (secure context) —
+   * na http:// API vůbec neexistuje / permission spadne.
+   */
   async enableTilt() {
+    if (typeof DeviceOrientationEvent === 'undefined') {
+      return window.isSecureContext ? 'unsupported' : 'insecure'
+    }
     try {
-      if (typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) {
+      if (DeviceOrientationEvent.requestPermission) {
+        if (!window.isSecureContext) return 'insecure'
         const res = await DeviceOrientationEvent.requestPermission()
-        if (res !== 'granted') return false
+        if (res !== 'granted') return 'denied'
       }
       addEventListener('deviceorientation', this._onOrient)
-      return true
-    } catch { return false }
+      return 'ok'
+    } catch {
+      return window.isSecureContext ? 'denied' : 'insecure'
+    }
   }
 
   /** Sejmout neutrální polohu (kalibrace) — volat po startu. */
@@ -59,9 +70,9 @@ export class FlightControls {
   getInput() {
     let pitch = 0, roll = 0
 
-    // klávesnice
-    if (this.keys.ArrowUp) pitch += 1      // přitáhnout
-    if (this.keys.ArrowDown) pitch -= 1
+    // klávesnice — LETECKY: šipka dolů = přitáhnout (stoupá), nahoru = potlačit
+    if (this.keys.ArrowUp) pitch -= 1
+    if (this.keys.ArrowDown) pitch += 1
     if (this.keys.ArrowLeft || this.keys.KeyA) roll -= 1
     if (this.keys.ArrowRight || this.keys.KeyD) roll += 1
 
