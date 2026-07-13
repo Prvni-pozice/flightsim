@@ -84,8 +84,8 @@ export class FlightControls {
       if (ang === 90) { const t = b; b = -g; g = t }
       else if (ang === 270 || ang === -90) { const t = b; b = g; g = -t }
       const nb = this.neutralBeta == null ? 40 : this.neutralBeta
-      // náklon dopředu (beta < neutral) = klesat, k sobě = stoupat
-      pitch += Math.max(-1, Math.min(1, (b - nb) / 22))
+      // náklon dopředu (beta < neutral) = stoupat, k sobě = klesat
+      pitch -= Math.max(-1, Math.min(1, (b - nb) / 22))
       roll += Math.max(-1, Math.min(1, g / 25))
     }
 
