@@ -17,12 +17,36 @@ export class FlightControls {
     addEventListener('keydown', e => { this.keys[e.code] = true })
     addEventListener('keyup', e => { this.keys[e.code] = false })
 
+    this._calRemaining = 0
+    this._calB = 0
+    this._calG = 0
     this._onOrient = e => {
       if (e.beta == null || e.gamma == null) return
       this.tilt.beta = e.beta
       this.tilt.gamma = e.gamma
       this.tiltActive = true
+      // kalibrace z PRŮMĚRU prvních vzorků, až data reálně tečou — jediný
+      // odečet na časovači po kliku chytal ještě pohyb ruky/permission
+      // dialog a na šířku dával špatný neutrál (letadlo pak "samo" zatáčelo)
+      if (this._calRemaining > 0) {
+        const { b, g } = this._orientedTilt()
+        this._calB += b; this._calG += g
+        this._calRemaining--
+        if (this._calRemaining === 0) {
+          this.neutralB = this._calB / 45
+          this.neutralG = this._calG / 45
+        }
+      }
     }
+    // dvojklep kdekoli na obrazovce (mimo tlačítka plynu) = rekalibrace
+    // aktuálního držení telefonu
+    let lastTap = 0
+    addEventListener('touchend', e => {
+      if (e.target.closest && e.target.closest('.thr, #overlay')) return
+      const now = performance.now()
+      if (now - lastTap < 320) this.calibrate()
+      lastTap = now
+    })
   }
 
   /**
@@ -66,12 +90,11 @@ export class FlightControls {
     return { b, g }
   }
 
-  /** Sejmout neutrální polohu (kalibrace) — volat po startu. */
+  /** Zahájit kalibraci: neutrál = průměr příštích 45 vzorků orientace. */
   calibrate() {
-    if (this.tilt.beta == null) return
-    const { b, g } = this._orientedTilt()
-    this.neutralB = b
-    this.neutralG = g
+    this._calB = 0
+    this._calG = 0
+    this._calRemaining = 45
   }
 
   bindThrottleButtons(upEl, dnEl) {
@@ -100,14 +123,13 @@ export class FlightControls {
 
     // náklon mobilu — oba zdroje (pitch i roll) se poměřují proti
     // ZKALIBROVANÉMU neutrálu (ne proti nule), stejně přeorientovanému
-    // podle displeje jako za běhu (viz _orientedTilt).
-    if (this.tiltActive && this.tilt.beta != null) {
+    // podle displeje jako za běhu (viz _orientedTilt). Dokud kalibrace
+    // neproběhla, tilt neřídí (jinak by prvních ~1 s řídil špatný neutrál).
+    if (this.tiltActive && this.tilt.beta != null && this.neutralB != null && this._calRemaining === 0) {
       const { b, g } = this._orientedTilt()
-      const nb = this.neutralB == null ? 40 : this.neutralB
-      const ng = this.neutralG == null ? 0 : this.neutralG
       // náklon k sobě (beta > neutral) = stoupat, od sebe = klesat
-      pitch += Math.max(-1, Math.min(1, (b - nb) / 44))
-      roll += Math.max(-1, Math.min(1, (g - ng) / 50))
+      pitch += Math.max(-1, Math.min(1, (b - this.neutralB) / 44))
+      roll += Math.max(-1, Math.min(1, (g - this.neutralG) / 50))
     }
 
     pitch = Math.max(-1, Math.min(1, pitch))

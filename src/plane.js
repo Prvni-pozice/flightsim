@@ -116,21 +116,27 @@ export class Plane {
     if (input.thrUp) this.throttle = Math.min(1, this.throttle + dt * 0.45)
     if (input.thrDn) this.throttle = Math.max(0, this.throttle - dt * 0.45)
 
-    // účinnost řízení roste s rychlostí (pomalu = mrtvé řízení)
-    const eff = Math.min(1, this.speed / 110)
+    // ── letový model (arkádový, vzor brihernandez/Vazgriz): ──
+    // 1. V NÁKLONU ZATÁČÍ PŘITAŽENÍ — pitch je rotace kolem lokální osy
+    //    křídel, takže při banku 60° jde většina přitažení do změny kurzu
+    //    (prudká zatáčka = naklonit + přitáhnout, jako ve skutečnosti).
+    // 2. Náklon sám o sobě zatáčí jen LÍNĚ (malý koordinační yaw) a nos
+    //    v náklonu zvolna padá (musíš přitahovat) — žádný "level kill"
+    //    faktor, který dřív vypínal zatáčku při zvednutém nosu a způsoboval
+    //    přeskakování mezi zatáčkou a stoupáním.
+    const eff = Math.min(1, this.speed / 110) // pomalu = mrtvé řízení
 
-    // pitch: rychlost otáčení kolem lokální X (umí přemet)
+    // pitch: rotace kolem lokální X (+ = přitáhnout; umí přemet)
     const pitchRate = -input.pitch * PITCH_RATE * eff
     this._ax.set(1, 0, 0).applyQuaternion(this.quat)
     this._qtmp.setFromAxisAngle(this._ax, pitchRate * dt)
     this.quat.premultiply(this._qtmp)
 
-    // roll: vstup = CÍLOVÝ úhel náklonu (pro tilt ovládání přirozené;
-    // po puštění se křídla sama srovnají). Úhel náklonu z right/up vektorů.
+    // roll: vstup = CÍLOVÝ úhel náklonu (tilt-friendly; po puštění se
+    // křídla sama srovnají). Lokální +X je pilotovo LEVÉ křídlo (right =
+    // fwd×up = −X) → bank>0 = náklon DOPRAVA.
     const rightY = this._ax.set(1, 0, 0).applyQuaternion(this.quat).y
     const upY = this._ax.set(0, 1, 0).applyQuaternion(this.quat).y // ulož ČÍSLA — _ax se níž přepíše!
-    // pozor na strany: lokální +X je z pohledu pilota LEVÉ křídlo (right =
-    // fwd×up = −X). bank>0 (=+X křídlo nahoře) je tedy náklon DOPRAVA.
     const bank = Math.atan2(rightY, upY)
     const targetBank = input.roll * 1.15          // až ~66°; +roll = doprava
     let dBank = targetBank - bank
@@ -141,15 +147,26 @@ export class Plane {
     this._qtmp.setFromAxisAngle(this._ax, rollRate * dt)
     this.quat.premultiply(this._qtmp)
 
-    // koordinovaná zatáčka: náklon → otáčení kolem světové Y (na zádech ne)
-    const fwd = this.forward()
-    const level = Math.max(0, 1 - Math.abs(fwd.y) * 1.4)
-    const bankClamped = Math.max(-1.2, Math.min(1.2, bank))
-    const yawRate = -(9.81 / Math.max(this.speed, 60)) * Math.tan(bankClamped) * level * (upY >= 0 ? 1 : -1)
+    const sinBank = Math.sin(bank), cosBank = Math.cos(bank)
+
+    // koordinační yaw: náklon líně stáčí kurz i bez přitažení (kolem
+    // světové Y; na zádech obráceně) — jen doplněk, hlavní zatáčení dělá pitch
+    const COORD = 0.5 // rad/s při plném náklonu
+    const yawRate = -COORD * sinBank * (upY >= 0 ? 1 : -1)
     this._qtmp.setFromAxisAngle(this._ax.set(0, 1, 0), yawRate * dt)
     this.quat.premultiply(this._qtmp)
 
+    // v náklonu bez přitažení nos zvolna padá (ztráta vztlaku) — dává
+    // reálný pocit "zatáčku je třeba držet přitažením"
+    const noseDrop = 0.22 * (1 - Math.abs(cosBank))
+    if (noseDrop > 1e-4) {
+      this._ax.set(1, 0, 0).applyQuaternion(this.quat)
+      this._qtmp.setFromAxisAngle(this._ax, -noseDrop * dt)
+      this.quat.premultiply(this._qtmp)
+    }
+
     // rychlost: k cílové dle plynu; stoupání ubírá, klesání přidává
+    const fwd = this.forward()
     const target = MIN_SPEED + this.throttle * (MAX_SPEED - MIN_SPEED)
     this.speed += (target - this.speed) * (dt / ACCEL_TAU)
     this.speed -= 9.81 * fwd.y * dt * 0.7

@@ -81,7 +81,7 @@ startBtn.addEventListener('click', async () => {
   try {
     audio.init()
     const tilt = await controls.enableTilt()
-    if (tilt === 'ok') setTimeout(() => controls.calibrate(), 600) // sejmout neutrální držení
+    if (tilt === 'ok') controls.calibrate() // neutrál = průměr prvních vzorků (dvojklep = rekalibrace)
     else if (tilt === 'insecure') showErr('Náklon telefonu vyžaduje HTTPS — otevři stránku přes https://')
     else if (tilt === 'denied') showErr('Povolení pohybu zamítnuto — povol v Nastavení > Safari > Pohyb a orientace')
     // 'unsupported' (desktop) = ticho, jede klávesnice
