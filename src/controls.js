@@ -8,7 +8,8 @@ export class FlightControls {
   constructor() {
     this.keys = {}
     this.tilt = { beta: null, gamma: null }
-    this.neutralBeta = null
+    this.neutralB = null
+    this.neutralG = null
     this.thrUpHeld = false
     this.thrDnHeld = false
     this.tiltActive = false
@@ -47,9 +48,30 @@ export class FlightControls {
     }
   }
 
+  /**
+   * Přepočítat surové beta/gamma na "obrazovkově relativní" pitch/roll zdroj
+   * podle natočení displeje. Sdíleno mezi calibrate() a getInput() — dřív
+   * calibrate() ukládal SUROVÉ beta (bez přepočtu), zatímco getInput()
+   * porovnávalo už přeorientovanou hodnotu → na šířku neseděl neutrál
+   * s tím, co se reálně měřilo (odtud "poskakování"/přecitlivělost).
+   */
+  _orientedTilt() {
+    let b = this.tilt.beta, g = this.tilt.gamma
+    const ang = (screen.orientation && typeof screen.orientation.angle === 'number')
+      ? screen.orientation.angle
+      : (typeof window.orientation === 'number' ? window.orientation : 0)
+    if (ang === 90) { const t = b; b = -g; g = t }
+    else if (ang === 270 || ang === -90) { const t = b; b = g; g = -t }
+    else if (ang === 180 || ang === -180) { b = -b; g = -g }
+    return { b, g }
+  }
+
   /** Sejmout neutrální polohu (kalibrace) — volat po startu. */
   calibrate() {
-    if (this.tilt.beta != null) this.neutralBeta = this.tilt.beta
+    if (this.tilt.beta == null) return
+    const { b, g } = this._orientedTilt()
+    this.neutralB = b
+    this.neutralG = g
   }
 
   bindThrottleButtons(upEl, dnEl) {
@@ -76,24 +98,16 @@ export class FlightControls {
     if (this.keys.ArrowLeft || this.keys.KeyA) roll -= 1
     if (this.keys.ArrowRight || this.keys.KeyD) roll += 1
 
-    // náklon mobilu
+    // náklon mobilu — oba zdroje (pitch i roll) se poměřují proti
+    // ZKALIBROVANÉMU neutrálu (ne proti nule), stejně přeorientovanému
+    // podle displeje jako za běhu (viz _orientedTilt).
     if (this.tiltActive && this.tilt.beta != null) {
-      let b = this.tilt.beta, g = this.tilt.gamma
-      // orientace displeje: na šířku jsou osy prohozené. screen.orientation
-      // nemusí být na iOS Safari spolehlivě dostupné (starší API
-      // window.orientation je jistější) — bez fallbacku zůstane ang vždy 0
-      // (portrait mapování), i když je telefon fyzicky na šířku → ovládání
-      // vypadá zkřížené/obrácené. Zkusit obě API, jinak 0.
-      const ang = (screen.orientation && typeof screen.orientation.angle === 'number')
-        ? screen.orientation.angle
-        : (typeof window.orientation === 'number' ? window.orientation : 0)
-      if (ang === 90) { const t = b; b = -g; g = t }
-      else if (ang === 270 || ang === -90) { const t = b; b = g; g = -t }
-      else if (ang === 180 || ang === -180) { b = -b; g = -g }
-      const nb = this.neutralBeta == null ? 40 : this.neutralBeta
-      // náklon dopředu (beta < neutral) = stoupat, k sobě = klesat
-      pitch -= Math.max(-1, Math.min(1, (b - nb) / 44))
-      roll += Math.max(-1, Math.min(1, g / 50))
+      const { b, g } = this._orientedTilt()
+      const nb = this.neutralB == null ? 40 : this.neutralB
+      const ng = this.neutralG == null ? 0 : this.neutralG
+      // náklon k sobě (beta > neutral) = stoupat, od sebe = klesat
+      pitch += Math.max(-1, Math.min(1, (b - nb) / 44))
+      roll += Math.max(-1, Math.min(1, (g - ng) / 50))
     }
 
     pitch = Math.max(-1, Math.min(1, pitch))
