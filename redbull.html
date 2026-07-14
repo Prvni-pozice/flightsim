@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Red Bull Air Race — Red Bull Ring</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; background: #14203a; font-family: system-ui, sans-serif; }
+    #app, #app canvas { position: fixed; inset: 0; touch-action: none; }
+    #hud {
+      position: fixed; top: env(safe-area-inset-top, 8px); left: 0; right: 0;
+      display: flex; justify-content: space-between; padding: 10px 16px;
+      color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.6); pointer-events: none;
+      font-variant-numeric: tabular-nums;
+    }
+    #hud b { font-size: 22px; }
+    #hud small { opacity: .8; font-size: 11px; display: block; }
+    #race {
+      position: fixed; top: calc(env(safe-area-inset-top, 8px) + 56px); left: 0; right: 0;
+      text-align: center; color: #ffd21e; font-weight: 700; font-size: 16px;
+      text-shadow: 0 1px 4px rgba(0,0,0,.7); pointer-events: none;
+      font-variant-numeric: tabular-nums;
+    }
+    #msg {
+      position: fixed; top: 34%; left: 0; right: 0; text-align: center;
+      color: #ffd75e; font-size: 26px; font-weight: 700; text-shadow: 0 2px 8px rgba(0,0,0,.7);
+      pointer-events: none;
+    }
+    .thr {
+      position: fixed; right: 14px; width: 74px; height: 74px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,.55); background: rgba(255,255,255,.14);
+      color: #fff; font-size: 34px; font-weight: 700; line-height: 70px; text-align: center;
+      user-select: none; -webkit-user-select: none; touch-action: none;
+      backdrop-filter: blur(3px);
+    }
+    #thrUp { bottom: calc(env(safe-area-inset-bottom, 12px) + 108px); border-color: #7dff9a; }
+    #thrDn { bottom: env(safe-area-inset-bottom, 12px); border-color: #ff8a7d; }
+    #overlay {
+      position: fixed; inset: 0; background: rgba(10,16,34,.9); z-index: 10;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      color: #fff; text-align: center; padding: 24px;
+    }
+    #overlay h1 { font-size: 30px; margin-bottom: 10px; }
+    #overlay p { opacity: .85; line-height: 1.5; margin-bottom: 8px; max-width: 460px; }
+    #startBtn {
+      margin-top: 18px; padding: 14px 44px; font-size: 20px; font-weight: 700;
+      border: 0; border-radius: 12px; background: #d42a1e; color: #fff;
+    }
+    #startBtn[disabled] { opacity: .55; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="hud">
+    <div><b><span id="speed">0</span></b> km/h<small>rychlost</small></div>
+    <div style="text-align:center"><b><span id="alt">0</span></b> m<small>výška nad zemí</small></div>
+    <div style="text-align:right"><b><span id="thrval">55</span></b> %<small>plyn</small></div>
+  </div>
+  <div id="race">⏱ — s</div>
+  <div id="msg"></div>
+
+  <div id="thrUp" class="thr">+</div>
+  <div id="thrDn" class="thr">−</div>
+
+  <div id="overlay">
+    <h1>🏁 Red Bull Air Race — Red Bull Ring</h1>
+    <p>Proleť <b>bránami v pořadí</b> (žlutá šipka ukazuje příští). Červeno-bílé dvojice = proletět <b>mezi pylony a nízko</b> (nad 28 m = +2 s). Modré singly = průletové body šikan a zatáček.</p>
+    <p><b>Dotyk pylonu = +3 s.</b> Čas se měří od průletu startovní bránou po dokončení kola.</p>
+    <p><b>Mobil:</b> náklon telefonu + plyn ±, dvojklep = rekalibrace. <b>Desktop:</b> šipky (↓ = přitáhnout), W/S plyn, R = na start.</p>
+    <button id="startBtn" disabled>Načítám trať…</button>
+  </div>
+
+  <script type="module" src="/src/race.js"></script>
+</body>
+</html>

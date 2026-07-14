@@ -73,20 +73,36 @@ export class FlightControls {
   }
 
   /**
-   * Přepočítat surové beta/gamma na "obrazovkově relativní" pitch/roll zdroj
-   * podle natočení displeje. Sdíleno mezi calibrate() a getInput() — dřív
-   * calibrate() ukládal SUROVÉ beta (bez přepočtu), zatímco getInput()
-   * porovnávalo už přeorientovanou hodnotu → na šířku neseděl neutrál
-   * s tím, co se reálně měřilo (odtud "poskakování"/přecitlivělost).
+   * Náklon telefonu vůči OBRAZOVCE, spočtený z gravitačního vektoru.
+   *
+   * Proč ne přímo beta/gamma: Eulerovy úhly z DeviceOrientation se při
+   * větším náklonu PŘEKLÁPĚJÍ (gamma umí skočit +85° → −85°, beta o 180°;
+   * gimbal ambiguita). Na šířku je gamma zdrojem pitche → při přitažení
+   * v letu dolů se vstup náhle obrátil a "nešel zvednout čumák".
+   * Gravitační vektor g_d = (−cosβ·sinγ, sinβ, cosβ·cosγ) (třetí řádek
+   * rotační matice Rz(α)Rx(β)Ry(γ); alfa/kompas na něj nemá vliv) je vůči
+   * této ambiguitě imunní — libovolná Eulerova reprezentace téže polohy
+   * dá stejný vektor. Z něj se úhly odvodí spojitě, bez skoků.
+   *
+   * Otočení do os obrazovky: W3C angle = otočení PROTI směru hodinových
+   * ručiček; osy obrazovky v osách zařízení: e_right=(cosθ,−sinθ),
+   * e_up=(sinθ,cosθ).
    */
   _orientedTilt() {
-    let b = this.tilt.beta, g = this.tilt.gamma
-    const ang = (screen.orientation && typeof screen.orientation.angle === 'number')
+    const D = Math.PI / 180
+    const be = this.tilt.beta * D, ga = this.tilt.gamma * D
+    const cb = Math.cos(be), sb = Math.sin(be)
+    const gx = -cb * Math.sin(ga), gy = sb, gz = cb * Math.cos(ga)
+    const angDeg = (screen.orientation && typeof screen.orientation.angle === 'number')
       ? screen.orientation.angle
       : (typeof window.orientation === 'number' ? window.orientation : 0)
-    if (ang === 90) { const t = b; b = -g; g = t }
-    else if (ang === 270 || ang === -90) { const t = b; b = g; g = -t }
-    else if (ang === 180 || ang === -180) { b = -b; g = -g }
+    const th = ((angDeg + 360) % 360) * D
+    const xs = gx * Math.cos(th) - gy * Math.sin(th)   // gravitace podél "doprava po obrazovce"
+    const ys = gx * Math.sin(th) + gy * Math.cos(th)   // gravitace podél "nahoru po obrazovce"
+    // b ≈ beta v portraitu (0 = naplocho, 90 = svisle); g ≈ gamma, ale
+    // spojitě (atan2 s hypot nikdy nepřeskočí) — saturuje u ±90°
+    const b = Math.atan2(ys, gz) / D
+    const g = Math.atan2(-xs, Math.hypot(ys, gz)) / D
     return { b, g }
   }
 

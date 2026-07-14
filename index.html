@@ -3,72 +3,42 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <title>FlightSim — F-16 nad Skrýšovem</title>
+  <title>FlightSim — výběr hry</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { height: 100%; overflow: hidden; background: #1a1430; font-family: system-ui, sans-serif; }
-    #app, #app canvas { position: fixed; inset: 0; touch-action: none; }
-    /* HUD */
-    #hud {
-      position: fixed; top: env(safe-area-inset-top, 8px); left: 0; right: 0;
-      display: flex; justify-content: space-between; padding: 10px 16px;
-      color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.6); pointer-events: none;
-      font-variant-numeric: tabular-nums;
+    html, body { height: 100%; font-family: system-ui, sans-serif; }
+    body {
+      background: linear-gradient(165deg, #1a1430 0%, #402a4e 55%, #b0503c 100%);
+      color: #fff; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 26px; padding: 24px;
     }
-    #hud b { font-size: 22px; }
-    #hud small { opacity: .8; font-size: 11px; display: block; }
-    #msg {
-      position: fixed; top: 34%; left: 0; right: 0; text-align: center;
-      color: #ffd75e; font-size: 26px; font-weight: 700; text-shadow: 0 2px 8px rgba(0,0,0,.7);
-      pointer-events: none;
+    h1 { font-size: 34px; text-shadow: 0 2px 10px rgba(0,0,0,.5); }
+    .cards { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+    a.card {
+      display: block; width: 300px; padding: 22px; border-radius: 16px;
+      background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.25);
+      color: #fff; text-decoration: none; backdrop-filter: blur(4px);
+      transition: transform .15s, background .15s;
     }
-    /* plyn ± */
-    .thr {
-      position: fixed; right: 14px; width: 74px; height: 74px; border-radius: 50%;
-      border: 2px solid rgba(255,255,255,.55); background: rgba(255,255,255,.14);
-      color: #fff; font-size: 34px; font-weight: 700; line-height: 70px; text-align: center;
-      user-select: none; -webkit-user-select: none; touch-action: none;
-      backdrop-filter: blur(3px);
-    }
-    #thrUp { bottom: calc(env(safe-area-inset-bottom, 12px) + 108px); border-color: #7dff9a; }
-    #thrDn { bottom: env(safe-area-inset-bottom, 12px); border-color: #ff8a7d; }
-    /* overlay */
-    #overlay {
-      position: fixed; inset: 0; background: rgba(16,10,34,.88); z-index: 10;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      color: #fff; text-align: center; padding: 24px;
-    }
-    #overlay h1 { font-size: 30px; margin-bottom: 10px; }
-    #overlay p { opacity: .85; line-height: 1.5; margin-bottom: 8px; max-width: 420px; }
-    #startBtn {
-      margin-top: 18px; padding: 14px 44px; font-size: 20px; font-weight: 700;
-      border: 0; border-radius: 12px; background: #ff9a3c; color: #241a08;
-    }
+    a.card:hover { transform: translateY(-3px); background: rgba(255,255,255,.17); }
+    .card h2 { font-size: 22px; margin-bottom: 8px; }
+    .card p { opacity: .85; line-height: 1.45; font-size: 14px; }
+    .em { font-size: 40px; display: block; margin-bottom: 10px; }
   </style>
 </head>
 <body>
-  <div id="app"></div>
-
-  <div id="hud">
-    <div><b><span id="speed">0</span></b> km/h<small>rychlost</small></div>
-    <div style="text-align:center"><b><span id="alt">0</span></b> m<small>výška nad zemí</small></div>
-    <div style="text-align:right"><b><span id="thrval">55</span></b> %<small>plyn</small></div>
+  <h1>🛦 FlightSim</h1>
+  <div class="cards">
+    <a class="card" href="/skrysov.html">
+      <span class="em">🏞️</span>
+      <h2>F-16 nad Skrýšovem</h2>
+      <p>Volný let stíhačkou nad reálnou krajinou Vysočiny. Na severu za horami Miami, na západě kaňon.</p>
+    </a>
+    <a class="card" href="/redbull.html">
+      <span class="em">🏁</span>
+      <h2>Red Bull Air Race</h2>
+      <p>Závod kolem pylonů nad Red Bull Ringem ve Spielbergu. Braný v pořadí, penalizace za dotyk pylonu. Leť na čas!</p>
+    </a>
   </div>
-  <div id="msg"></div>
-
-  <div id="thrUp" class="thr">+</div>
-  <div id="thrDn" class="thr">−</div>
-
-  <div id="overlay">
-    <h1>🛦 F-16 nad Skrýšovem</h1>
-    <p><b>Mobil:</b> nakláněj telefon — do stran = náklon, k sobě/od sebe = stoupání a klesání. Plyn tlačítky + / −. <b>Dvojklep</b> na obrazovku = rekalibrace držení.</p>
-    <p><b>Zatáčení jako ve skutečnosti:</b> nakloň se A přitáhni — prudkost zatáčky řídíš přitažením.</p>
-    <p><b>Desktop:</b> šipky = řízení (letecky: ↓ = přitáhnout/stoupat, ↑ = potlačit), W/S = plyn, R = reset.</p>
-    <p>Na severu za horami leží Miami, na západě kaňon. Šťastný let!</p>
-    <button id="startBtn" disabled>Načítám krajinu…</button>
-  </div>
-
-  <script type="module" src="/src/main.js"></script>
 </body>
 </html>
