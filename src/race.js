@@ -4,7 +4,7 @@
 // dotyk pylonu = pylon "splaskne" + 3 s penalizace. Kolo = všechny brány
 // v pořadí a zpět na start/cíl.
 import * as THREE from 'three'
-import { buildRace, heightAt, GATES, crossGate, PYLON_H, WORLD } from './rbring.js'
+import { buildRace, heightAt, GATES, crossGate, PYLON_H, PYLON_R, WORLD } from './rbring.js'
 import { Plane, buildEdge540, EDGE540_SPEC } from './plane.js'
 import { FlightControls } from './controls.js'
 import { FlightEnv } from './env.js'
@@ -100,7 +100,7 @@ let msgT = 0
 function flash(text, secs = 1.6) { elMsg.textContent = text; msgT = secs }
 
 // ── pravidla brány: vyhodnotit při PŘEKROČENÍ roviny brány (crossGate) ──
-const GATE_ALT_MAX = 28   // m AGL — výš = penalizace (pylony mají 25 m)
+const GATE_ALT_MAX = PYLON_H + 5   // m AGL — výš než pylony = penalizace
 function checkGate() {
   const g = GATES[race.next]
   const res = crossGate(g, race.prevAlong, plane.pos.x, plane.pos.z)
@@ -134,7 +134,8 @@ function checkPylonHits() {
   world.pylonMap.forEach((pl, i) => {
     if (race.hitPylons.has(i)) return
     const dx = plane.pos.x - pl.x, dz = plane.pos.z - pl.z
-    if (dx * dx + dz * dz > 12) return
+    const hitR = PYLON_R + 1.4
+    if (dx * dx + dz * dz > hitR * hitR) return
     const top = heightAt(pl.x, pl.z) + PYLON_H
     if (agl < top + 1) {
       race.hitPylons.add(i)
@@ -194,8 +195,12 @@ function tick() {
 
   // ukazatel příští brány
   const ng = GATES[race.next]
-  world.marker.position.set(ng.x, heightAt(ng.x, ng.z) + PYLON_H + 14 + Math.sin(performance.now() / 300) * 3, ng.z)
+  world.marker.position.set(ng.x, heightAt(ng.x, ng.z) + PYLON_H + 16 + Math.sin(performance.now() / 300) * 3, ng.z)
   world.marker.rotation.y += dt * 2
+
+  // houpání balónů
+  const now = performance.now() / 1000
+  for (const bl of world.balloons) bl.grp.position.y = bl.baseY + Math.sin(now * 0.4 + bl.phase) * 6
 
   if (msgT > 0) { msgT -= dt; if (msgT <= 0) elMsg.textContent = '' }
 
